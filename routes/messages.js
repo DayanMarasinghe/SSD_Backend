@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Message = require("../models/messageModel");
 var MessageAuthenticate = require("../middleware/messageAuth");
+var MsgValidation = require("../middleware/jwtValidation/msgValidation");
 
 router.post("/messages", async (req, res) => {
   //creating the JS object
@@ -11,21 +12,29 @@ router.post("/messages", async (req, res) => {
     sender: req.body.sender,
   });
 
-  //Message authentication
-  if (MessageAuthenticate(messages.message, req.body.encryptedMsg)) {
-    try {
-      const saveMessage = await messages.save();
-      res.status(201).json(saveMessage);
-    } catch (err) {
-      res.status(400).json({
-        code: 400,
-        error: err.message,
+  //jwt validation
+  if (MsgValidation(req)) {
+    //Message authentication
+    if (MessageAuthenticate(messages.message, req.body.encryptedMsg)) {
+      try {
+        const saveMessage = await messages.save();
+        res.status(201).json(saveMessage);
+      } catch (err) {
+        res.status(400).json({
+          code: 400,
+          error: err.message,
+        });
+      }
+    } else {
+      res.status(401).json({
+        code: 401,
+        error: "Message authentication failed",
       });
     }
-  } else {
+  }else{
     res.status(401).json({
       code: 401,
-      error: "Message authentication failed",
+      error: "Permission not granted",
     });
   }
 });
